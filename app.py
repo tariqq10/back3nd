@@ -3,41 +3,43 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
+from flask_cors import CORS
+
 from models import db
 from routes.auth_routes import auth_bp
 from routes.product_routes import product_bp
 from routes.order_routes import order_bp
 from routes.admin_routes import admin_bp
-from flask_cors import CORS
 
-# Create Flask app
 app = Flask(__name__)
+CORS(app)  # <— Must come after app is created!
 
-# Enable CORS (important for React frontend)
-CORS(app)
-
-# Config
+# Configuration
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///shop.db"
 app.config["JWT_SECRET_KEY"] = "supersecretkey"
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
 
-# Initialize extensions
+# Init extensions
 db.init_app(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
-# Register blueprints
+# Register routes
 app.register_blueprint(auth_bp, url_prefix="/api")
-app.register_blueprint(product_bp)
+app.register_blueprint(product_bp, url_prefix="/api")
 app.register_blueprint(order_bp, url_prefix="/api")
 app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
-# Create tables + seed admin
+@app.route('/')
+def home():
+    return {"message": "Backend API is running successfully!"}
+
+# Create tables and seed admin
 with app.app_context():
     db.create_all()
     from models import User
+    from flask_bcrypt import generate_password_hash
     if not User.query.filter_by(username="admin").first():
-        from flask_bcrypt import generate_password_hash
         admin_user = User(
             username="admin",
             password=generate_password_hash("admin123").decode("utf-8"),
