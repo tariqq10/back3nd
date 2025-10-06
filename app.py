@@ -12,19 +12,19 @@ from routes.order_routes import order_bp
 from routes.admin_routes import admin_bp
 
 app = Flask(__name__)
-CORS(app)  # <— Must come after app is created!
+CORS(app)  # Enable CORS after app creation
 
 # Configuration
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///shop.db"
 app.config["JWT_SECRET_KEY"] = "supersecretkey"
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
 
-# Init extensions
+# Initialize extensions
 db.init_app(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
-# Register routes
+# Register Blueprints
 app.register_blueprint(auth_bp, url_prefix="/api")
 app.register_blueprint(product_bp, url_prefix="/api")
 app.register_blueprint(order_bp, url_prefix="/api")
@@ -38,11 +38,13 @@ def home():
 with app.app_context():
     db.create_all()
     from models import User
-    from flask_bcrypt import generate_password_hash
+
+    # Use the SAME bcrypt instance that was initialized with the app
     if not User.query.filter_by(username="admin").first():
+        hashed_pw = bcrypt.generate_password_hash("admin123").decode("utf-8")
         admin_user = User(
             username="admin",
-            password=generate_password_hash("admin123").decode("utf-8"),
+            password=hashed_pw,
             role="admin"
         )
         db.session.add(admin_user)
