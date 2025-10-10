@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
-from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User
+from flask_jwt_extended import create_access_token
+from utils.extensions import bcrypt
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -17,7 +18,8 @@ def register():
     if User.query.filter_by(username=username).first():
         return jsonify({"error": "User already exists"}), 409
 
-    hashed_pw = generate_password_hash(password)
+    # ✅ Use bcrypt for hashing consistently
+    hashed_pw = bcrypt.generate_password_hash(password).decode("utf-8")
     new_user = User(username=username, password=hashed_pw)
     db.session.add(new_user)
     db.session.commit()
@@ -34,7 +36,16 @@ def login():
 
     user = User.query.filter_by(username=username).first()
 
-    if not user or not check_password_hash(user.password, password):
+    if not user or not bcrypt.check_password_hash(user.password, password):
         return jsonify({"error": "Invalid credentials"}), 401
 
-    return jsonify({"message": "Login successful", "username": user.username}), 200
+    # ✅ Create JWT token with role info
+    access_token = create_access_token(
+        identity={"id": user.id, "username": user.username, "role": user.role}
+    )
+
+    return jsonify({
+        "message": "Login successful",
+        "token": access_token,
+        "role": user.role
+    }), 200

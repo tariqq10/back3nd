@@ -5,6 +5,7 @@ from flask_jwt_extended import JWTManager
 from datetime import timedelta
 from flask_cors import CORS
 
+from utils.extensions import bcrypt, jwt
 from models import db
 from routes.auth_routes import auth_bp
 from routes.product_routes import product_bp
@@ -21,8 +22,8 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
 
 # Initialize extensions
 db.init_app(app)
-bcrypt = Bcrypt(app)
-jwt = JWTManager(app)
+bcrypt.init_app(app)
+jwt.init_app(app)
 
 # Register Blueprints
 app.register_blueprint(auth_bp, url_prefix="/api")
@@ -39,7 +40,7 @@ with app.app_context():
     db.create_all()
     from models import User
 
-    # Use the SAME bcrypt instance that was initialized with the app
+    # Use the SAME bcrypt instance initialized above
     if not User.query.filter_by(username="admin").first():
         hashed_pw = bcrypt.generate_password_hash("admin123").decode("utf-8")
         admin_user = User(
